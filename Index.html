@@ -12,12 +12,14 @@
         .neon-pill { transition: all 0.3s ease; border: 1px solid rgba(0, 242, 254, 0.2); background: rgba(0, 242, 254, 0.02); }
         .neon-pill.active { background: #00f2fe; box-shadow: 0 0 20px #00f2fe; color: #000; border-color: transparent; transform: scale(0.9); }
         .lang-btn { font-family: 'Orbitron', sans-serif; font-size: 0.7rem; padding: 4px 10px; border-radius: 6px; border: 1px solid #00f2fe; color: #00f2fe; transition: 0.3s; }
-        .text-anim { animation: reveal 0.6s ease-out; }
-        @keyframes reveal { from { opacity: 0; filter: blur(8px); transform: translateY(5px); } to { opacity: 1; filter: blur(0); transform: translateY(0); } }
+        .text-reveal { animation: reveal 0.6s cubic-bezier(0.77, 0, 0.175, 1); }
+        @keyframes reveal { from { opacity: 0; filter: blur(10px); transform: translateY(10px); } to { opacity: 1; filter: blur(0); transform: translateY(0); } }
+        .calendar-day { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.7rem; border: 1px solid rgba(255,255,255,0.05); }
+        .taken-dot { width: 4px; height: 4px; background: #00f2fe; border-radius: 50%; margin-top: 2px; }
     </style>
 </head>
 <body class="min-h-screen p-4">
-    <nav class="max-w-4xl mx-auto flex justify-between items-center p-4 glass mb-8">
+    <nav class="max-w-4xl mx-auto flex justify-between items-center p-4 glass mb-6">
         <h1 id="title" class="text-xl font-bold text-cyan-400 uppercase italic">PillTracker</h1>
         <div class="flex gap-2">
             <button onclick="setLang('ar')" class="lang-btn">AR</button>
@@ -26,8 +28,8 @@
         </div>
     </nav>
 
-    <main class="max-w-md mx-auto">
-        <div id="loginBox" class="glass p-8 text-center space-y-6">
+    <main class="max-w-md mx-auto space-y-6">
+        <div id="loginBox" class="glass p-8 text-center space-y-4">
             <input type="text" id="userInput" placeholder="Nom d'utilisateur" class="w-full bg-transparent border-b-2 border-cyan-900 focus:border-cyan-400 outline-none p-2 text-center text-xl">
             <button onclick="startApp()" class="w-full py-3 bg-cyan-500 text-black font-bold rounded-xl uppercase tracking-widest">Entrer</button>
         </div>
@@ -40,6 +42,12 @@
                 </div>
                 <div id="grid" class="grid grid-cols-5 gap-3"></div>
             </div>
+
+            <div class="glass p-6">
+                <h3 id="calTitle" class="text-cyan-400 mb-4 font-bold uppercase text-center">Calendrier</h3>
+                <div id="calendar" class="grid grid-cols-7 gap-1 bg-black/20 p-2 rounded-lg"></div>
+            </div>
+
             <div class="glass p-6">
                 <h3 id="historyTitle" class="text-cyan-400 mb-4 font-bold uppercase">Historique</h3>
                 <div id="logs" class="space-y-2 text-xs opacity-60 max-h-40 overflow-y-auto"></div>
@@ -49,7 +57,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAx7c0bFNXuBxadAUItyP6h0U",
@@ -64,27 +72,34 @@
         const db = getFirestore(app);
 
         const langData = {
-            fr: { title: "Suivi Médicaments", label: "Plaque de :", hist: "Historique", welcome: "Entrer" },
-            en: { title: "Pill Tracker", label: "Pack size:", hist: "History", welcome: "Enter" },
-            ar: { title: "متابع الأدوية", label: "حجم العلبة:", hist: "السجل", welcome: "دخول" }
+            fr: { title: "Suivi Médicaments", label: "Plaque de :", hist: "Historique", cal: "Calendrier" },
+            en: { title: "Pill Tracker", label: "Pack size:", hist: "History", cal: "Calendar" },
+            ar: { title: "متابع الأدوية", label: "حجم العلبة:", hist: "السجل", cal: "التقويم" }
         };
 
         window.setLang = (l) => {
             document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
-            document.getElementById('title').innerText = langData[l].title;
+            const t = document.getElementById('title');
+            t.innerText = langData[l].title;
+            t.classList.add('text-reveal');
             document.getElementById('labelCount').innerText = langData[l].label;
             document.getElementById('historyTitle').innerText = langData[l].hist;
+            document.getElementById('calTitle').innerText = langData[l].cal;
+            setTimeout(() => t.classList.remove('text-reveal'), 600);
             localStorage.setItem('lang', l);
         };
 
         let user = "";
+        let takenPills = new Set();
+
         window.startApp = () => {
             user = document.getElementById('userInput').value.trim();
             if(!user) return;
             document.getElementById('loginBox').classList.add('hidden');
             document.getElementById('appBody').classList.remove('hidden');
             createGrid();
-            loadHistory();
+            syncData();
+            renderCalendar();
         };
 
         window.createGrid = () => {
@@ -101,28 +116,80 @@
             }
         };
 
-        async function togglePill(n) {
-            const btn = document.getElementById(`p-${n}`);
-            btn.classList.toggle('active');
-            const now = new Date();
-            await setDoc(doc(db, "users", user, "logs", now.getTime().toString()), {
-                pill: n,
-                time: now.toLocaleString(),
-                timestamp: now.getTime()
+        async function syncData() {
+            onSnapshot(collection(db, "users", user, "current_pack"), (snap) => {
+                takenPills.clear();
+                document.querySelectorAll('.neon-pill').forEach(b => b.classList.remove('active'));
+                snap.forEach(d => {
+                    const pillNum = d.id;
+                    takenPills.add(parseInt(pillNum));
+                    const btn = document.getElementById(`p-${pillNum}`);
+                    if(btn) btn.classList.add('active');
+                });
             });
-        }
 
-        function loadHistory() {
             const q = query(collection(db, "users", user, "logs"), orderBy("timestamp", "desc"));
             onSnapshot(q, (snap) => {
                 const logCont = document.getElementById('logs');
                 logCont.innerHTML = '';
                 snap.forEach(d => {
                     const data = d.data();
-                    logCont.innerHTML += `<div>[${data.time}] Pillule ${data.pill} prise.</div>`;
+                    const entry = document.createElement('div');
+                    entry.className = "flex justify-between items-center border-b border-white/5 py-1";
+                    entry.innerHTML = `<span>[${data.time}] Pillule ${data.pill}</span>
+                                       <button onclick="editDate('${d.id}', '${data.time}')" class="text-cyan-500">✎</button>`;
+                    logCont.appendChild(entry);
                 });
             });
         }
+
+        async function togglePill(n) {
+            const total = document.getElementById('gridSize').value;
+            const now = new Date();
+            const id = n.toString();
+
+            if(takenPills.has(n)) {
+                await deleteDoc(doc(db, "users", user, "current_pack", id));
+            } else {
+                await setDoc(doc(db, "users", user, "current_pack", id), { taken: true });
+                await setDoc(doc(db, "users", user, "logs", now.getTime().toString()), {
+                    pill: n,
+                    total: total,
+                    time: now.toLocaleString(),
+                    timestamp: now.getTime(),
+                    dateKey: now.toISOString().split('T')[0]
+                });
+            }
+            if(takenPills.size + 1 >= total && !takenPills.has(n)) {
+                if(confirm("Plaque terminée. Réinitialiser ?")) {
+                    const snap = await getDocs(collection(db, "users", user, "current_pack"));
+                    snap.forEach(async (d) => await deleteDoc(doc(db, "users", user, "current_pack", d.id)));
+                }
+            }
+            renderCalendar();
+        }
+
+        window.editDate = async (id, oldTime) => {
+            const newDate = prompt("Modifier la date/heure (Format: DD/MM/YYYY HH:MM:SS)", oldTime);
+            if(newDate) {
+                await setDoc(doc(db, "users", user, "logs", id), { time: newDate }, { merge: true });
+            }
+        };
+
+        function renderCalendar() {
+            const cal = document.getElementById('calendar');
+            cal.innerHTML = '';
+            const now = new Date();
+            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+            
+            for(let i=1; i<=daysInMonth; i++) {
+                const day = document.createElement('div');
+                day.className = "calendar-day glass";
+                day.innerHTML = `<span>${i}</span><div id="dot-${i}"></div>`;
+                cal.appendChild(day);
+            }
+        }
+
         setLang(localStorage.getItem('lang') || 'fr');
     </script>
 </body>
