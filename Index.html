@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PillTracker Pro</title>
+    <title>PillTracker Cloud Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap');
         body { background: #050608; color: #e2e8f0; font-family: 'Rajdhani', sans-serif; transition: all 0.4s ease; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; }
-        .neon-pill { transition: all 0.3s ease; border: 1px solid rgba(0, 242, 254, 0.2); background: rgba(0, 242, 254, 0.02); }
-        .neon-pill.active { background: #00f2fe; box-shadow: 0 0 20px #00f2fe; color: #000; border-color: transparent; transform: scale(0.9); }
-        .lang-btn { font-family: 'Orbitron', sans-serif; font-size: 0.7rem; padding: 4px 10px; border-radius: 6px; border: 1px solid #00f2fe; color: #00f2fe; transition: 0.3s; }
-        .text-reveal { animation: reveal 0.6s cubic-bezier(0.77, 0, 0.175, 1); }
-        @keyframes reveal { from { opacity: 0; filter: blur(10px); transform: translateY(10px); } to { opacity: 1; filter: blur(0); transform: translateY(0); } }
-        .calendar-day { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.7rem; border: 1px solid rgba(255,255,255,0.05); }
-        .taken-dot { width: 4px; height: 4px; background: #00f2fe; border-radius: 50%; margin-top: 2px; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; }
+        .neon-pill { transition: all 0.3s ease; border: 1px solid rgba(0, 242, 254, 0.2); background: rgba(0, 242, 254, 0.05); }
+        .neon-pill.active { background: #00f2fe; box-shadow: 0 0 15px #00f2fe; color: #000; border-color: transparent; }
+        .lang-btn { font-family: 'Orbitron', sans-serif; font-size: 0.7rem; padding: 4px 10px; border-radius: 6px; border: 1px solid #00f2fe; color: #00f2fe; }
+        .cal-cell { min-height: 50px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; align-items: center; padding: 2px; font-size: 0.7rem; }
+        .pill-tag { background: rgba(0, 242, 254, 0.2); color: #00f2fe; padding: 1px 3px; border-radius: 4px; margin-top: 2px; font-weight: bold; }
+        .text-reveal { animation: reveal 0.6s ease-out; }
+        @keyframes reveal { from { opacity: 0; filter: blur(8px); transform: translateY(5px); } to { opacity: 1; } }
     </style>
 </head>
 <body class="min-h-screen p-4">
@@ -38,26 +38,25 @@
             <div class="glass p-6">
                 <div class="flex justify-between items-center mb-6">
                     <span id="labelCount" class="text-sm uppercase text-gray-400">Plaque de :</span>
-                    <input type="number" id="gridSize" value="10" onchange="createGrid()" class="bg-black/50 border border-cyan-900 rounded-lg p-1 w-16 text-center text-cyan-400">
+                    <input type="number" id="gridSize" value="10" onchange="updateGridSize()" class="bg-black/50 border border-cyan-900 rounded-lg p-1 w-16 text-center text-cyan-400">
                 </div>
                 <div id="grid" class="grid grid-cols-5 gap-3"></div>
             </div>
 
             <div class="glass p-6">
-                <h3 id="calTitle" class="text-cyan-400 mb-4 font-bold uppercase text-center">Calendrier</h3>
-                <div id="calendar" class="grid grid-cols-7 gap-1 bg-black/20 p-2 rounded-lg"></div>
-            </div>
-
-            <div class="glass p-6">
-                <h3 id="historyTitle" class="text-cyan-400 mb-4 font-bold uppercase">Historique</h3>
-                <div id="logs" class="space-y-2 text-xs opacity-60 max-h-40 overflow-y-auto"></div>
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="changeMonth(-1)" class="text-cyan-400 text-xl font-bold">←</button>
+                    <h3 id="calMonth" class="text-cyan-400 font-bold uppercase"></h3>
+                    <button onclick="changeMonth(1)" class="text-cyan-400 text-xl font-bold">→</button>
+                </div>
+                <div id="calendar" class="grid grid-cols-7 gap-1 bg-black/20 p-1 rounded-lg"></div>
             </div>
         </div>
     </main>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAx7c0bFNXuBxadAUItyP6h0U",
@@ -72,124 +71,112 @@
         const db = getFirestore(app);
 
         const langData = {
-            fr: { title: "Suivi Médicaments", label: "Plaque de :", hist: "Historique", cal: "Calendrier" },
-            en: { title: "Pill Tracker", label: "Pack size:", hist: "History", cal: "Calendar" },
-            ar: { title: "متابع الأدوية", label: "حجم العلبة:", hist: "السجل", cal: "التقويم" }
-        };
-
-        window.setLang = (l) => {
-            document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
-            const t = document.getElementById('title');
-            t.innerText = langData[l].title;
-            t.classList.add('text-reveal');
-            document.getElementById('labelCount').innerText = langData[l].label;
-            document.getElementById('historyTitle').innerText = langData[l].hist;
-            document.getElementById('calTitle').innerText = langData[l].cal;
-            setTimeout(() => t.classList.remove('text-reveal'), 600);
-            localStorage.setItem('lang', l);
+            fr: { title: "Suivi Médicaments", label: "Plaque de :", welcome: "Entrer" },
+            en: { title: "Pill Tracker", label: "Pack size:", welcome: "Enter" },
+            ar: { title: "متابع الأدوية", label: "حجم العلبة:", welcome: "دخول" }
         };
 
         let user = "";
-        let takenPills = new Set();
+        let currentDate = new Date();
+        let historyData = {};
+
+        window.setLang = (l) => {
+            document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+            document.getElementById('title').innerText = langData[l].title;
+            document.getElementById('labelCount').innerText = langData[l].label;
+            localStorage.setItem('lang', l);
+            renderCalendar();
+        };
 
         window.startApp = () => {
             user = document.getElementById('userInput').value.trim();
             if(!user) return;
             document.getElementById('loginBox').classList.add('hidden');
             document.getElementById('appBody').classList.remove('hidden');
-            createGrid();
-            syncData();
-            renderCalendar();
+            syncPills();
+            syncHistory();
         };
 
-        window.createGrid = () => {
-            const size = document.getElementById('gridSize').value;
-            const container = document.getElementById('grid');
-            container.innerHTML = '';
-            for(let i=1; i<=size; i++) {
-                const btn = document.createElement('button');
-                btn.className = "neon-pill aspect-square rounded-xl font-bold text-lg";
-                btn.innerText = i;
-                btn.id = `p-${i}`;
-                btn.onclick = () => togglePill(i);
-                container.appendChild(btn);
-            }
-        };
-
-        async function syncData() {
+        function syncPills() {
             onSnapshot(collection(db, "users", user, "current_pack"), (snap) => {
-                takenPills.clear();
-                document.querySelectorAll('.neon-pill').forEach(b => b.classList.remove('active'));
-                snap.forEach(d => {
-                    const pillNum = d.id;
-                    takenPills.add(parseInt(pillNum));
-                    const btn = document.getElementById(`p-${pillNum}`);
-                    if(btn) btn.classList.add('active');
-                });
-            });
+                const grid = document.getElementById('grid');
+                const size = document.getElementById('gridSize').value;
+                grid.innerHTML = '';
+                let activeSet = new Set();
+                snap.forEach(d => activeSet.add(parseInt(d.id)));
 
-            const q = query(collection(db, "users", user, "logs"), orderBy("timestamp", "desc"));
-            onSnapshot(q, (snap) => {
-                const logCont = document.getElementById('logs');
-                logCont.innerHTML = '';
-                snap.forEach(d => {
-                    const data = d.data();
-                    const entry = document.createElement('div');
-                    entry.className = "flex justify-between items-center border-b border-white/5 py-1";
-                    entry.innerHTML = `<span>[${data.time}] Pillule ${data.pill}</span>
-                                       <button onclick="editDate('${d.id}', '${data.time}')" class="text-cyan-500">✎</button>`;
-                    logCont.appendChild(entry);
-                });
+                for(let i=1; i<=size; i++) {
+                    const btn = document.createElement('button');
+                    btn.className = `neon-pill aspect-square rounded-xl font-bold ${activeSet.has(i) ? 'active' : ''}`;
+                    btn.innerText = i;
+                    btn.onclick = () => togglePill(i, activeSet.has(i));
+                    grid.appendChild(btn);
+                }
             });
         }
 
-        async function togglePill(n) {
-            const total = document.getElementById('gridSize').value;
-            const now = new Date();
-            const id = n.toString();
+        function syncHistory() {
+            onSnapshot(collection(db, "users", user, "history"), (snap) => {
+                historyData = {};
+                snap.forEach(d => { historyData[d.id] = d.data(); });
+                renderCalendar();
+            });
+        }
 
-            if(takenPills.has(n)) {
-                await deleteDoc(doc(db, "users", user, "current_pack", id));
+        async function togglePill(n, isActive) {
+            const size = document.getElementById('gridSize').value;
+            const today = new Date().toISOString().split('T')[0];
+            
+            if(isActive) {
+                await deleteDoc(doc(db, "users", user, "current_pack", n.toString()));
             } else {
-                await setDoc(doc(db, "users", user, "current_pack", id), { taken: true });
-                await setDoc(doc(db, "users", user, "logs", now.getTime().toString()), {
-                    pill: n,
-                    total: total,
-                    time: now.toLocaleString(),
-                    timestamp: now.getTime(),
-                    dateKey: now.toISOString().split('T')[0]
-                });
-            }
-            if(takenPills.size + 1 >= total && !takenPills.has(n)) {
-                if(confirm("Plaque terminée. Réinitialiser ?")) {
-                    const snap = await getDocs(collection(db, "users", user, "current_pack"));
-                    snap.forEach(async (d) => await deleteDoc(doc(db, "users", user, "current_pack", d.id)));
+                await setDoc(doc(db, "users", user, "current_pack", n.toString()), { taken: true });
+                await setDoc(doc(db, "users", user, "history", today), { ratio: `${n}/${size}`, pill: n, timestamp: Date.now() });
+                if(n == size) {
+                    if(confirm("Plaque terminée. Vider ?")) {
+                        const snap = await getDocs(collection(db, "users", user, "current_pack"));
+                        snap.forEach(async d => await deleteDoc(doc(db, "users", user, "current_pack", d.id)));
+                    }
                 }
             }
-            renderCalendar();
         }
 
-        window.editDate = async (id, oldTime) => {
-            const newDate = prompt("Modifier la date/heure (Format: DD/MM/YYYY HH:MM:SS)", oldTime);
-            if(newDate) {
-                await setDoc(doc(db, "users", user, "logs", id), { time: newDate }, { merge: true });
-            }
+        window.changeMonth = (dir) => {
+            currentDate.setMonth(currentDate.getMonth() + dir);
+            renderCalendar();
         };
 
         function renderCalendar() {
             const cal = document.getElementById('calendar');
+            const calMonth = document.getElementById('calMonth');
             cal.innerHTML = '';
-            const now = new Date();
-            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
             
-            for(let i=1; i<=daysInMonth; i++) {
-                const day = document.createElement('div');
-                day.className = "calendar-day glass";
-                day.innerHTML = `<span>${i}</span><div id="dot-${i}"></div>`;
-                cal.appendChild(day);
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            calMonth.innerText = new Intl.DateTimeFormat(localStorage.getItem('lang') || 'fr', { month: 'long', year: 'numeric' }).format(currentDate);
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            for(let i=0; i < (firstDay === 0 ? 6 : firstDay - 1); i++) {
+                cal.innerHTML += '<div class="cal-cell"></div>';
+            }
+
+            for(let day=1; day<=daysInMonth; day++) {
+                const dateKey = `${year}-${String(month+1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const data = historyData[dateKey];
+                const cell = document.createElement('div');
+                cell.className = "cal-cell glass";
+                cell.innerHTML = `<span>${day}</span>${data ? `<div class="pill-tag">${data.ratio}</div>` : ''}`;
+                cell.onclick = () => {
+                    const custom = prompt("Marquer une prise manuelle pour ce jour (ex: 4/10) :", data ? data.ratio : "");
+                    if(custom) setDoc(doc(db, "users", user, "history", dateKey), { ratio: custom, manual: true });
+                };
+                cal.appendChild(cell);
             }
         }
 
+        window.updateGridSize = () => syncPills();
         setLang(localStorage.getItem('lang') || 'fr');
     </script>
 </body>
