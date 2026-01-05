@@ -12,85 +12,99 @@
             --bg: #f8fafc; --card: rgba(255, 255, 255, 0.8); --text: #1e293b; --accent: #6366f1;
         }
         .dark {
-            --bg: #0f172a; --card: rgba(30, 41, 59, 0.7); --text: #f1f5f9; --accent: #818cf8;
+            --bg: #0b0f1a; --card: rgba(22, 30, 46, 0.7); --text: #f1f5f9; --accent: #818cf8;
         }
 
         body { 
             background: var(--bg); color: var(--text); 
             font-family: 'Plus Jakarta Sans', sans-serif; 
-            transition: background 0.5s ease, color 0.5s ease;
+            transition: background 0.6s cubic-bezier(0.4, 0, 0.2, 1), color 0.6s ease;
             min-height: 100vh;
+            overflow-x: hidden;
         }
 
         .glass { 
-            background: var(--card); backdrop-filter: blur(12px); 
+            background: var(--card); backdrop-filter: blur(16px); 
             border: 1px solid rgba(148, 163, 184, 0.1); 
-            border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.03);
         }
 
         .pill-btn {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             background: rgba(148, 163, 184, 0.1); border-radius: 16px;
         }
         .pill-btn.active {
             background: var(--accent); color: white;
-            box-shadow: 0 8px 15px rgba(99, 102, 241, 0.3); transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.4); transform: scale(1.05);
         }
 
         .theme-toggle {
-            width: 45px; height: 45px; border-radius: 12px;
+            width: 42px; height: 42px; border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; background: var(--card); border: 1px solid rgba(148, 163, 184, 0.2);
+            transition: all 0.4s ease;
         }
+        .theme-toggle:hover { transform: rotate(15deg); border-color: var(--accent); }
 
-        .lang-btn { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.7rem; }
+        .lang-btn { 
+            font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.75rem;
+            transition: all 0.3s ease; opacity: 0.5;
+        }
+        .lang-btn.active { opacity: 1; color: var(--accent); transform: translateY(-1px); }
+
+        .text-anim { animation: futuristicReveal 0.6s cubic-bezier(0.23, 1, 0.32, 1) both; }
+        
+        @keyframes futuristicReveal {
+            0% { opacity: 0; filter: blur(10px); transform: translateY(10px) skewX(-10deg); }
+            100% { opacity: 1; filter: blur(0); transform: translateY(0) skewX(0deg); }
+        }
 
         .cal-cell { 
             aspect-ratio: 1/1.2; border-radius: 14px; 
             background: rgba(148, 163, 184, 0.05);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: 0.2s; cursor: pointer;
+            transition: 0.3s; cursor: pointer;
         }
-        .cal-cell:hover { background: rgba(148, 163, 184, 0.15); }
-        .ratio-tag { background: var(--accent); color: white; font-size: 0.6rem; padding: 2px 6px; border-radius: 6px; margin-top: 4px; font-weight: 800; }
-
-        .text-anim { animation: reveal 0.5s ease-out; }
-        @keyframes reveal { from { opacity: 0; transform: translateY(5px); filter: blur(5px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+        .cal-cell:hover { background: rgba(148, 163, 184, 0.15); transform: translateY(-2px); }
+        .ratio-tag { background: var(--accent); color: white; font-size: 0.6rem; padding: 2px 8px; border-radius: 6px; margin-top: 5px; font-weight: 800; }
     </style>
 </head>
 <body class="p-4 md:p-8">
     <nav class="max-w-4xl mx-auto flex justify-between items-center p-4 glass mb-8">
-        <h1 id="title" class="text-xl font-extrabold tracking-tight text-anim">PillTracker</h1>
-        <div class="flex items-center gap-3">
-            <div class="flex gap-1">
-                <button onclick="setLang('ar')" class="lang-btn px-2 py-1 hover:text-indigo-500">AR</button>
-                <button onclick="setLang('fr')" class="lang-btn px-2 py-1 hover:text-indigo-500">FR</button>
-                <button onclick="setLang('en')" class="lang-btn px-2 py-1 hover:text-indigo-500">EN</button>
+        <h1 id="title" class="text-xl font-extrabold tracking-tight">PillTracker</h1>
+        <div class="flex items-center gap-4">
+            <div class="flex gap-2 bg-slate-500/5 p-1 rounded-xl">
+                <button onclick="setLang('ar')" id="btn-ar" class="lang-btn px-2 py-1">AR</button>
+                <button onclick="setLang('fr')" id="btn-fr" class="lang-btn px-2 py-1">FR</button>
+                <button onclick="setLang('en')" id="btn-en" class="lang-btn px-2 py-1">EN</button>
             </div>
-            <button onclick="toggleTheme()" class="theme-toggle" id="themeIcon">🌓</button>
+            <button onclick="toggleTheme()" class="theme-toggle" id="themeIcon">
+                <svg id="sun" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path></svg>
+                <svg id="moon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+            </button>
         </div>
     </nav>
 
     <main class="max-w-md mx-auto space-y-6">
         <div id="loginBox" class="glass p-10 text-center space-y-6 text-anim">
-            <input type="text" id="userInput" placeholder="Identifiant" class="w-full bg-transparent border-b-2 border-slate-300 focus:border-indigo-500 outline-none p-2 text-center text-xl transition-all">
-            <button onclick="startApp()" class="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg hover:scale-[1.02] transition-transform uppercase tracking-widest">Connecter</button>
+            <input type="text" id="userInput" placeholder="..." class="w-full bg-transparent border-b-2 border-slate-300 focus:border-indigo-500 outline-none p-2 text-center text-xl transition-all">
+            <button onclick="startApp()" id="btnLogin" class="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg hover:shadow-indigo-500/40 transition-all uppercase tracking-widest">Connecter</button>
         </div>
 
         <div id="appBody" class="hidden space-y-6">
-            <div class="glass p-6">
+            <div class="glass p-6 text-anim">
                 <div class="flex justify-between items-center mb-6">
                     <span id="labelCount" class="text-xs font-bold uppercase opacity-60">Plaque :</span>
-                    <input type="number" id="gridSize" value="10" onchange="updateGridSize()" class="bg-slate-500/10 rounded-lg p-1 w-16 text-center font-bold text-indigo-500">
+                    <input type="number" id="gridSize" value="10" onchange="updateGridSize()" class="bg-slate-500/10 rounded-lg p-1 w-16 text-center font-bold text-indigo-500 outline-none">
                 </div>
                 <div id="grid" class="grid grid-cols-5 gap-3"></div>
             </div>
 
-            <div class="glass p-6">
+            <div class="glass p-6 text-anim">
                 <div class="flex justify-between items-center mb-4">
-                    <button onclick="changeMonth(-1)" class="font-bold p-2">←</button>
-                    <h3 id="calMonth" class="font-extrabold uppercase text-sm"></h3>
-                    <button onclick="changeMonth(1)" class="font-bold p-2">→</button>
+                    <button onclick="changeMonth(-1)" class="hover:text-indigo-500 transition-colors p-2">←</button>
+                    <h3 id="calMonth" class="font-extrabold uppercase text-sm tracking-widest"></h3>
+                    <button onclick="changeMonth(1)" class="hover:text-indigo-500 transition-colors p-2">→</button>
                 </div>
                 <div id="calendar" class="grid grid-cols-7 gap-2"></div>
             </div>
@@ -99,7 +113,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAx7c0bFNXuBxadAUItyP6h0U",
@@ -114,26 +128,44 @@
         const db = getFirestore(app);
 
         const i18n = {
-            fr: { title: "PillTracker Sync", label: "Plaque :", login: "Connecter" },
-            en: { title: "PillTracker Sync", label: "Pack Size:", login: "Connect" },
-            ar: { title: "متابع الأدوية", label: "حجم العلبة:", login: "دخول" }
+            fr: { title: "PillTracker Sync", label: "Plaque :", login: "Connecter", placeholder: "Identifiant" },
+            en: { title: "PillTracker Sync", label: "Pack Size:", login: "Connect", placeholder: "Username" },
+            ar: { title: "متابع الأدوية", label: "حجم العلبة:", login: "دخول", placeholder: "اسم المستخدم" }
         };
 
         let user = "";
         let currentDate = new Date();
         let historyData = {};
 
-        // THEME
         window.toggleTheme = () => {
-            document.body.classList.toggle('dark');
-            localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+            const isDark = document.body.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcons(isDark);
         };
 
-        // LANG
+        function updateThemeIcons(isDark) {
+            document.getElementById('sun').classList.toggle('hidden', !isDark);
+            document.getElementById('moon').classList.toggle('hidden', isDark);
+        }
+
         window.setLang = (l) => {
+            const elements = ['title', 'labelCount', 'btnLogin'];
+            elements.forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.remove('text-anim');
+                void el.offsetWidth;
+                el.classList.add('text-anim');
+            });
+
             document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
             document.getElementById('title').innerText = i18n[l].title;
             document.getElementById('labelCount').innerText = i18n[l].label;
+            document.getElementById('btnLogin').innerText = i18n[l].login;
+            document.getElementById('userInput').placeholder = i18n[l].placeholder;
+
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-${l}`).classList.add('active');
+
             localStorage.setItem('lang', l);
             renderCalendar();
         };
@@ -173,18 +205,15 @@
 
             if(isActive) {
                 await deleteDoc(doc(packRef, n.toString()));
-                // Sync Calendrier après suppression : trouver le nouveau Max
                 const snap = await getDocs(packRef);
-                if (snap.empty) {
-                    await deleteDoc(histRef);
-                } else {
+                if (snap.empty) await deleteDoc(histRef);
+                else {
                     let max = 0;
                     snap.forEach(d => { if(parseInt(d.id) > max) max = parseInt(d.id); });
                     await setDoc(histRef, { ratio: `${max}/${size}`, val: max });
                 }
             } else {
                 await setDoc(doc(packRef, n.toString()), { taken: true });
-                // Toujours mettre à jour avec la pilule qu'on vient de cliquer si elle est plus haute
                 const snap = await getDocs(packRef);
                 let max = n;
                 snap.forEach(d => { if(parseInt(d.id) > max) max = parseInt(d.id); });
@@ -218,21 +247,23 @@
             cal.innerHTML = '';
             const y = currentDate.getFullYear();
             const m = currentDate.getMonth();
-            calMonth.innerText = new Intl.DateTimeFormat(localStorage.getItem('lang') || 'fr', { month: 'long', year: 'numeric' }).format(currentDate);
+            const lang = localStorage.getItem('lang') || 'fr';
+            calMonth.innerText = new Intl.DateTimeFormat(lang, { month: 'long', year: 'numeric' }).format(currentDate);
 
             const first = new Date(y, m, 1).getDay();
             const days = new Date(y, m + 1, 0).getDate();
+            const offset = (first === 0 ? 6 : first - 1);
 
-            for(let i=0; i < (first === 0 ? 6 : first - 1); i++) cal.innerHTML += '<div></div>';
+            for(let i=0; i < offset; i++) cal.innerHTML += '<div></div>';
 
             for(let d=1; d<=days; d++) {
                 const key = `${y}-${String(m+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const data = historyData[key];
                 const cell = document.createElement('div');
                 cell.className = "cal-cell";
-                cell.innerHTML = `<span class="font-bold opacity-40">${d}</span>${data ? `<div class="ratio-tag text-anim">${data.ratio}</div>` : ''}`;
+                cell.innerHTML = `<span class="text-xs font-bold opacity-30">${d}</span>${data ? `<div class="ratio-tag text-anim">${data.ratio}</div>` : ''}`;
                 cell.onclick = () => {
-                    const v = prompt("Valeur (ex: 4/10) ou vide pour supprimer :", data ? data.ratio : "");
+                    const v = prompt("Ratio (ex: 4/10) :", data ? data.ratio : "");
                     if(v === "") deleteDoc(doc(db, "users", user, "history", key));
                     else if(v) setDoc(doc(db, "users", user, "history", key), { ratio: v });
                 };
@@ -240,8 +271,9 @@
             }
         }
 
-        // INIT
-        if(localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        if(savedTheme === 'dark') document.body.classList.add('dark');
+        updateThemeIcons(savedTheme === 'dark');
         setLang(localStorage.getItem('lang') || 'fr');
         window.updateGridSize = () => syncPills();
     </script>
