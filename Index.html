@@ -24,7 +24,6 @@
             border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.03);
         }
 
-        /* Animation de changement de langue / texte */
         .text-anim { animation: futuristicReveal 0.6s cubic-bezier(0.23, 1, 0.32, 1) both; }
         @keyframes futuristicReveal {
             0% { opacity: 0; filter: blur(10px); transform: translateY(8px); }
@@ -34,12 +33,12 @@
         .pill-btn { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); background: rgba(148, 163, 184, 0.1); border-radius: 16px; }
         .pill-btn.active { background: var(--accent); color: white; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3); transform: scale(1.05); }
 
-        .progress-bar { height: 8px; border-radius: 4px; background: rgba(148, 163, 184, 0.1); overflow: hidden; position: relative; }
-        .progress-fill { height: 100%; background: var(--accent); transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 15px var(--accent); }
+        .progress-bar { height: 8px; border-radius: 4px; background: rgba(148, 163, 184, 0.1); overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--accent); transition: width 0.8s ease; box-shadow: 0 0 15px var(--accent); }
 
-        .auth-status { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-top: 5px; transition: 0.3s; }
+        .auth-status { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-top: 5px; }
         
-        .theme-toggle { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: var(--card); border: 1px solid rgba(148, 163, 184, 0.2); transition: 0.4s; }
+        .theme-toggle { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: var(--card); border: 1px solid rgba(148, 163, 184, 0.2); }
         .lang-btn { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.75rem; opacity: 0.5; transition: 0.3s; }
         .lang-btn.active { opacity: 1; color: var(--accent); }
 
@@ -64,7 +63,7 @@
         <div id="loginBox" class="glass p-8 text-center space-y-5 text-anim">
             <div class="space-y-2">
                 <input type="text" id="userInput" oninput="checkUserAvailability()" placeholder="Identifiant" class="w-full bg-transparent border-b-2 border-slate-300 focus:border-indigo-500 outline-none p-2 text-center text-xl transition-all">
-                <div id="userStatus" class="auth-status text-slate-400">Entrez un nom</div>
+                <div id="userStatus" class="auth-status text-slate-400">...</div>
             </div>
             <input type="password" id="passInput" placeholder="Mot de passe" class="hidden w-full bg-transparent border-b-2 border-slate-300 focus:border-indigo-500 outline-none p-2 text-center text-lg transition-all">
             <button onclick="handleAuth()" id="btnLogin" class="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg hover:shadow-indigo-500/40 transition-all uppercase tracking-widest">Vérifier</button>
@@ -73,7 +72,7 @@
         <div id="appBody" class="hidden space-y-6">
             <div class="glass p-6 text-anim">
                 <div class="flex justify-between items-center mb-3">
-                    <span id="labelProgress" class="text-xs font-bold uppercase opacity-60">Progression Plaque</span>
+                    <span id="labelProgress" class="text-xs font-bold uppercase opacity-60">Progression</span>
                     <span id="percentText" class="text-xs font-black text-indigo-500">0%</span>
                 </div>
                 <div class="progress-bar"><div id="progressFill" class="progress-fill" style="width: 0%"></div></div>
@@ -88,9 +87,9 @@
             </div>
 
             <div class="glass p-6 text-anim">
-                <div id="calendarHeader" class="flex justify-between items-center mb-4">
+                <div class="flex justify-between items-center mb-4">
                     <button onclick="changeMonth(-1)" class="p-2">←</button>
-                    <h3 id="calMonth" class="font-extrabold uppercase text-sm tracking-tighter"></h3>
+                    <h3 id="calMonth" class="font-extrabold uppercase text-sm"></h3>
                     <button onclick="changeMonth(1)" class="p-2">→</button>
                 </div>
                 <div id="calendar" class="grid grid-cols-7 gap-2"></div>
@@ -115,9 +114,9 @@
         const db = getFirestore(app);
 
         const i18n = {
-            fr: { title: "PillTracker Sync", label: "Plaque :", login: "Connecter", available: "Disponible", taken: "Déjà utilisé", progress: "Progression" },
-            en: { title: "PillTracker Sync", label: "Pack Size:", login: "Connect", available: "Available", taken: "Already taken", progress: "Progress" },
-            ar: { title: "متابع الأدوية", label: "حجم العلبة:", login: "دخول", available: "متاح", taken: "مستخدم", progress: "التقدم" }
+            fr: { title: "PillTracker Sync", label: "Plaque :", login: "Connecter", available: "Disponible", taken: "Compte trouvé", progress: "Progression", placeholder: "Mot de passe" },
+            en: { title: "PillTracker Sync", label: "Pack Size:", login: "Connect", available: "Available", taken: "Account found", progress: "Progress", placeholder: "Password" },
+            ar: { title: "متابع الأدوية", label: "حجم العلبة:", login: "دخول", available: "متاح", taken: "الحساب موجود", progress: "التقدم", placeholder: "كلمة المرور" }
         };
 
         let user = "";
@@ -125,32 +124,20 @@
         let historyData = {};
         let userExists = false;
 
-        // AUTH LOGIC
         window.checkUserAvailability = async () => {
             const name = document.getElementById('userInput').value.trim().toLowerCase();
             const status = document.getElementById('userStatus');
             const passField = document.getElementById('passInput');
-            const btn = document.getElementById('btnLogin');
             const lang = localStorage.getItem('lang') || 'fr';
 
-            if (name.length < 3) {
-                status.innerText = "...";
-                passField.classList.add('hidden');
-                return;
-            }
+            if (name.length < 3) { status.innerText = "..."; passField.classList.add('hidden'); return; }
 
             const userDoc = await getDoc(doc(db, "users", name));
-            if (userDoc.exists()) {
-                status.innerText = i18n[lang].taken;
-                status.style.color = "#f87171";
-                userExists = true;
-            } else {
-                status.innerText = i18n[lang].available;
-                status.style.color = "#4ade80";
-                userExists = false;
-            }
+            userExists = userDoc.exists();
+            status.innerText = userExists ? i18n[lang].taken : i18n[lang].available;
+            status.style.color = userExists ? "#818cf8" : "#4ade80";
             passField.classList.remove('hidden');
-            btn.innerText = i18n[lang].login;
+            document.getElementById('btnLogin').innerText = i18n[lang].login;
         };
 
         window.handleAuth = async () => {
@@ -159,21 +146,17 @@
             if (!name || !pass) return;
 
             const userRef = doc(db, "users", name);
-            const userDoc = await getDoc(userRef);
-
             if (userExists) {
-                if (userDoc.data().password === pass) {
-                    proceedToApp(name);
-                } else {
-                    alert("Mot de passe incorrect");
-                }
+                const docSnap = await getDoc(userRef);
+                if (docSnap.data().password === pass) proceed(name);
+                else alert("Mot de passe incorrect");
             } else {
-                await setDoc(userRef, { password: pass, createdAt: new Date() });
-                proceedToApp(name);
+                await setDoc(userRef, { password: pass });
+                proceed(name);
             }
         };
 
-        function proceedToApp(name) {
+        function proceed(name) {
             user = name;
             document.getElementById('loginBox').classList.add('hidden');
             document.getElementById('appBody').classList.remove('hidden');
@@ -181,7 +164,6 @@
             syncHistory();
         }
 
-        // THEME & LANG
         window.toggleTheme = () => {
             document.body.classList.toggle('dark');
             localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
@@ -192,9 +174,12 @@
             document.getElementById('title').innerText = i18n[l].title;
             document.getElementById('labelCount').innerText = i18n[l].label;
             document.getElementById('labelProgress').innerText = i18n[l].progress;
+            document.getElementById('passInput').placeholder = i18n[l].placeholder;
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-${l}`).classList.add('active');
             localStorage.setItem('lang', l);
             renderCalendar();
-            checkUserAvailability();
+            if(document.getElementById('userInput').value) checkUserAvailability();
         };
 
         function syncPills() {
@@ -205,7 +190,6 @@
                 let activeSet = new Set();
                 snap.forEach(d => activeSet.add(parseInt(d.id)));
 
-                // Update Progress
                 const progress = (activeSet.size / size) * 100;
                 document.getElementById('progressFill').style.width = `${progress}%`;
                 document.getElementById('percentText').innerText = `${Math.round(progress)}%`;
@@ -239,13 +223,6 @@
                 const snap = await getDocs(packRef);
                 let max = n; snap.forEach(d => { if(parseInt(d.id) > max) max = parseInt(d.id); });
                 await setDoc(histRef, { ratio: `${max}/${size}` });
-                
-                if(n == size) {
-                    if(confirm("Plaque terminée ! Vider ?")) {
-                        const all = await getDocs(packRef);
-                        all.forEach(async d => await deleteDoc(doc(packRef, d.id)));
-                    }
-                }
             }
         }
 
@@ -261,11 +238,10 @@
 
         function renderCalendar() {
             const cal = document.getElementById('calendar');
-            const calMonth = document.getElementById('calMonth');
             cal.innerHTML = '';
             const y = currentDate.getFullYear(), m = currentDate.getMonth();
             const lang = localStorage.getItem('lang') || 'fr';
-            calMonth.innerText = new Intl.DateTimeFormat(lang, { month: 'long', year: 'numeric' }).format(currentDate);
+            document.getElementById('calMonth').innerText = new Intl.DateTimeFormat(lang, { month: 'long', year: 'numeric' }).format(currentDate);
 
             const first = new Date(y, m, 1).getDay();
             const days = new Date(y, m + 1, 0).getDate();
@@ -279,11 +255,18 @@
                 const cell = document.createElement('div');
                 cell.className = "cal-cell";
                 cell.innerHTML = `<span class="text-[10px] font-bold opacity-30">${d}</span>${data ? `<div class="ratio-tag text-anim">${data.ratio}</div>` : ''}`;
+                
+                cell.onclick = async () => {
+                    const newVal = prompt(`Valeur pour le ${d}/${m+1} (ex: 5/10) :`, data ? data.ratio : "");
+                    if (newVal === null) return;
+                    const docRef = doc(db, "users", user, "history", key);
+                    if (newVal.trim() === "") await deleteDoc(docRef);
+                    else await setDoc(docRef, { ratio: newVal.trim() });
+                };
                 cal.appendChild(cell);
             }
         }
 
-        // INIT
         if(localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
         setLang(localStorage.getItem('lang') || 'fr');
         window.updateGridSize = () => syncPills();
